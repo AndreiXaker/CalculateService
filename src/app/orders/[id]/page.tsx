@@ -216,37 +216,34 @@ const handleCancelOrderAccess = async () => {
         </tr>
       </thead>
       <tbody>
-        {Object.entries(data.support_costs).map(([sla, periods]) => {
-          const relatedFile = data.order_files?.find(
-            (file) =>
-              file.kind === "sla_doc" &&
-              file.sla_name?.toLowerCase() === sla.toLowerCase()
-          )
+      {Object.entries(data.support_costs).map(([sla, periods]) => {
+        const slaFiles = data.order_files?.filter(file => file.kind === "sla_doc") || []
+        const relatedFile = slaFiles.find(file => file.file_url.toLowerCase().includes(sla.toLowerCase()))
 
-          return (
-            <tr key={sla} className="border-t">
-              <td className="border px-4 py-2 font-medium">{sla}</td>
-              <td className="border px-4 py-2 text-right">{periods["12_months"] || "-"}</td>
-              <td className="border px-4 py-2 text-right">{periods["24_months"] || "-"}</td>
-              <td className="border px-4 py-2 text-right">{periods["36_months"] || "-"}</td>
-              <td className="border px-4 py-2 text-center">
-                {relatedFile ? (
-                  <a
-                    href={relatedFile.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs sm:text-sm"
-                  >
-                    📄 Скачать КП
-                  </a>
-                ) : (
-                  <span className="text-gray-400 italic">Нет файла</span>
-                )}
-              </td>
-            </tr>
-          )
-        })}
-      </tbody>
+        return (
+          <tr key={sla} className="border-t">
+            <td className="border px-4 py-2 font-medium">{sla}</td>
+            <td className="border px-4 py-2 text-right">{periods["12_months"] || "-"}</td>
+            <td className="border px-4 py-2 text-right">{periods["24_months"] || "-"}</td>
+            <td className="border px-4 py-2 text-right">{periods["36_months"] || "-"}</td>
+            <td className="border px-4 py-2 text-center">
+              {relatedFile ? (
+                <a
+                  href={relatedFile.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs sm:text-sm"
+                >
+                  📄 Скачать КП
+                </a>
+              ) : (
+                <span className="text-gray-400 italic">Нет файла</span>
+              )}
+            </td>
+          </tr>
+        )
+      })}
+    </tbody>
     </table>
   </div>
 )}

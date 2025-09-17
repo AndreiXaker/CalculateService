@@ -140,9 +140,8 @@ const handleAction = async (type: string, id: string) => {
 
     if (role === "manager") {
       if (
-        selectedCalc.status !== "На утверждении" &&
-        selectedCalc.status !== "На редактировании" &&
-        selectedCalc.status !== "Создан"
+        selectedCalc.status === "Утвержден" ||
+        selectedCalc.status === "Отклонен"
       ) {
         return message.warning(
           "Менеджер может редактировать только заказы со статусами 'Создан', 'На утверждении' или 'На редактировании'"
@@ -151,10 +150,7 @@ const handleAction = async (type: string, id: string) => {
 
       try {
         setLoading(true)
-        if (selectedCalc.status === "На утверждении") {
-        await acceptOrder(selectedCalc.id, "in_review") 
-        message.info("Статус заказа изменен на 'На редактировании'")
-      }
+        await acceptOrder(id,'in_review')
         message.info("Открываем заказ для редактирования")
         router.push(`/orders/edit/${id}`)
       } catch (error) {

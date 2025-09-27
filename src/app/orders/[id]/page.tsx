@@ -37,6 +37,7 @@ const handleCancelOrderAccess = async () => {
     try {
       await cancelOrderAccess(data.id)
       message.success('Заявка отозвана')
+      router.push('/main')
     } catch {
       message.error('Не удалось отозвать заявку')
     } finally {
@@ -155,11 +156,8 @@ const handleCancelOrderAccess = async () => {
               </button>
               <button
                 onClick={() => router.push(`/orders/edit/${data.id}`)}
-                disabled={submitting || data.status === "submitted"}
                 className={`px-4 py-2 rounded-lg text-white font-medium transition ${
-                submitting || data.status !== "draft"
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-indigo-600 hover:bg-indigo-700"
+                "bg-green-600 hover:bg-indigo-700"
               }`}
               >
                   Редактировать

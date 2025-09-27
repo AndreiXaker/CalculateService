@@ -30,6 +30,7 @@ import {
 import { IOrder } from '@/app/types/orders.interface'
 import { INewProduct } from '@/app/types/product.interface'
 
+
 interface RawResponse {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   found_in_gpl: Record<string, any>
@@ -77,14 +78,15 @@ export default function OrderEdit() {
   const [manualEbayPrice, setManualEbayPrice] = useState('')
   const [manualManufacturer, setManualManufacturer] = useState('')
   const [gptQuery, setGptQuery] = useState('')
-  const [, setRows] = useState<Product[]>([]);
+ 
 
   const normalizePrice = (price: string | number | null | undefined) => {
-  if (price == null) return 0; 
-  if (typeof price === 'number') return price;
- 
-  const parsed = Number(price.toString().replace(/\s+/g, ''));
-  return isNaN(parsed) ? 0 : parsed;
+  if (!price) return null; 
+  
+ const str = String(price).replace(/\s+/g, '').replace(',', '.');
+ const parsed = Number(str);
+  
+  return isNaN(parsed) ? null : parsed;
 }
 
   useEffect(() => {
@@ -288,12 +290,11 @@ export default function OrderEdit() {
           }
         }
   
-        // Ждём itprice, если его нет, но есть job_id (логика как была)
+        
         if (!hasIt && data.job_id_itprice) {
           try {
             const itResult = await waitForJobResult(data.job_id_itprice, 'itprice');
             if (itResult) {
-              // поддерживаем разные формы: found_in_itprice[pid] || объект || массив
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const itData: any =
                 (itResult.found_in_itprice && itResult.found_in_itprice[pid]) ||
@@ -374,6 +375,7 @@ export default function OrderEdit() {
   
     try {
       const result = await searchUnknownProduct(pid);
+      console.log("Результат поиска:", result);
       if (!result.exists) {
         
         setIsProductMissing(true);
@@ -385,8 +387,8 @@ export default function OrderEdit() {
       const ebay = result.prices?.ebay;
       const it = result.prices?.it;
   
-      const hasGpl = !!gpl?.price_gpl;
-      const hasEbay = !!ebay?.price_gpl;
+      const hasGpl = !!gpl?.price_usd;
+      const hasEbay = !!ebay?.price_usd;
   
       if (hasGpl && hasEbay) {
        
@@ -405,14 +407,14 @@ export default function OrderEdit() {
           quantity: 1,
         };
   
-        setRows((prev) => [...prev, newItem]);
+        setProducts((prev) => [...prev, newItem]);
         message.success("Продукт добавлен");
         resetUnknownState();
       } else {
         
         setIsProductMissing(true);
-        setManualPrice(hasGpl ? String(gpl.price_gpl) : "");
-        setManualEbayPrice(hasEbay ? String(ebay.price_gpl) : "");
+        setManualPrice(hasGpl ? String(gpl.price_usd) : "");
+        setManualEbayPrice(hasEbay ? String(ebay.price_usd) : "");
         setUnknownPid(pid);
         message.info("Не хватает цены. Укажите недостающую вручную.");
       }
@@ -496,7 +498,6 @@ const handleSave = async (values: any) => {
   
   const allProducts = [...products]; 
 
-  // Проверяем, что у всех продуктов есть цены
   const invalidProducts = allProducts.filter(
     (p) => p.price_gpl == null || p.price_ebay == null
   );
@@ -536,7 +537,7 @@ const handleSave = async (values: any) => {
 
     await saveEditedOrder(orderId, payload);
     message.success('Изменения сохранены');
-    router.push('/main');
+    router.push(`/orders/${orderId}`);
   } catch (err) {
     console.error('Ошибка при сохранении отсчета:', err);
     message.error('Ошибка при сохранении отсчета');
@@ -631,10 +632,13 @@ const handleSave = async (values: any) => {
         <Form.Item label="ИНН" name="inn">
           <Input />
         </Form.Item>
+        <Form.Item label='Описание' name="description">
+          <Input/>
+        </Form.Item>
         <Form.Item label="Имя клиента" name="customer_name">
           <Input />
         </Form.Item>
-        <Form.Item label="Планируемая дата начала" name="planned_start_date">
+        <Form.Item label="Планируемая дата начала действия контракта" name="planned_start_date">
           <DatePicker style={{ width: '100%' }} />
         </Form.Item>
         {/* <Form.Item label="Описание" name="description">
@@ -709,13 +713,23 @@ const handleSave = async (values: any) => {
             <Input
               placeholder="Цена GPL"
               value={manualPrice}
-              onChange={e => setManualPrice(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value.replace(',', '.');
+                if (/^[0-9]*[.,]?[0-9]*$/.test(val) || val === '') {
+                  setManualPrice(val);
+                }
+              }}
             />
             <Input
-              placeholder="Цена eBay"
-              value={manualEbayPrice}
-              onChange={e => setManualEbayPrice(e.target.value)}
-            />
+            placeholder="Цена eBay"
+            value={manualEbayPrice}
+            onChange={(e) => {
+              const val = e.target.value.replace(',', '.');
+              if (/^[0-9]*[.,]?[0-9]*$/.test(val) || val === '') {
+                setManualEbayPrice(val);
+              }
+            }}
+          />
           </div>
         )}
         {loadingSearch && <Spin size="small" style={{ marginTop: 8 }} />}

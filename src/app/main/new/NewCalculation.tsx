@@ -107,13 +107,13 @@ export default function NewCalculation() {
                 <DatePicker
                   onChange={(date) =>
                     setParams({
-                      planned_start_date: date ? date.format("YYYY-MM-DD") : "",
+                      planned_start_date: date ? date.format("DD.MM.YYYY") : "",
                     })
                   }
                   placeholder="Выберите дату"
-                  format="YYYY-MM-DD"
+                  format="DD.MM.YYYY"
                   className="w-full"
-                  value={planned_start_date ? dayjs(planned_start_date) : null}
+                  value={planned_start_date ? dayjs(planned_start_date,"DD.MM.YYYY") : null}
                 />
               </div>
 

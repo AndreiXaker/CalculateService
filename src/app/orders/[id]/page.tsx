@@ -67,6 +67,7 @@ const handleCancelOrderAccess = async () => {
     try {
       await orderAccess(data.id)
       message.success('Заявка отправлена на одобрение')
+      router.push('/main')
     } catch {
       message.error('Ошибка при отправке заявки')
     } finally {
@@ -79,7 +80,7 @@ const handleCancelOrderAccess = async () => {
     setSubmitting(true)
     try {
       const updatedOrder = await acceptOrder(data.id,'approved')
-      message.success("Отсчет одобрен")
+      message.success("Расчет согласован")
       setTimeout(() => {
       router.push("/main")
     }, 800)
@@ -151,6 +152,17 @@ const handleCancelOrderAccess = async () => {
                 }`}
               >
                 {submitting ? "Отправка..." : "Отправить на согласование"}
+              </button>
+              <button
+                onClick={() => router.push(`/orders/edit/${data.id}`)}
+                disabled={submitting || data.status === "submitted"}
+                className={`px-4 py-2 rounded-lg text-white font-medium transition ${
+                submitting || data.status !== "draft"
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-700"
+              }`}
+              >
+                  Редактировать
               </button>
               <button
                 onClick={handleCancelOrderAccess}
@@ -255,17 +267,17 @@ const handleCancelOrderAccess = async () => {
             <h3 className="text-lg font-semibold text-green-600 mb-2 border-b border-gray-200 pb-1">Итоги отсчета</h3>
             <div className="text-sm space-y-2">
               <div className="flex justify-between px-2 py-1 bg-gray-50 rounded">
-                <span className="text-gray-700">Стоимость продуктов по GPL:</span>
+                <span className="text-gray-700">Стоимость продуктов:</span>
                 <span className="font-medium">{data.totals.total_gpl_price || "-"}</span>
+              </div>
+              <div className="flex justify-between px-2 py-1 bg-gray-50 rounded">
+                <span className="text-gray-700">Количество продуктов:</span>
+                <span className="font-medium">{data.totals.total_pid_count || "-"}</span>
               </div>
               {userRole === "manager" && (<div className="flex justify-between px-2 py-1 bg-gray-50 rounded">
                 <span className="text-gray-700">Стоимость ЗИП:</span>
                 <span className="font-medium">{data.totals.total_rma_cost || "-"}</span>
               </div>)}
-              <div className="flex justify-between px-2 py-1 bg-gray-50 rounded">
-                <span className="text-gray-700">Количество продуктов:</span>
-                <span className="font-medium">{data.totals.total_pid_count || "-"}</span>
-              </div>
               {userRole === "manager" && (
               <>
               <div className="flex justify-between px-2 py-1 bg-gray-50 rounded">
@@ -325,9 +337,9 @@ const handleCancelOrderAccess = async () => {
             <tr>
               <th className="border px-4 py-2 text-left">SKU</th>
               <th className="border px-4 py-2 text-left">Производитель</th>
-              <th className="border px-4 py-2 text-center">Кол-во</th>
-              <th className="border px-4 py-2 text-right">GPL цена</th>
-              <th className="border px-4 py-2 text-right">Ebay</th>
+              <th className="border px-4 py-2 text-right">Цена GPL</th>
+              <th className="border px-4 py-2 text-right">Цена eBay</th>
+              <th className="border px-4 py-2 text-center">Количество</th>
               {userRole === "manager" && (
               <th className="border px-4 py-2 text-center">Кол-во ЗИП</th>
               )}

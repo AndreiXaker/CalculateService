@@ -16,7 +16,7 @@ const slaOptions = [
 export default function NewCalculation() {
   const router = useRouter();
   
-  const { params, setParams } = useCalculationStore();
+  const { params, setParams, resetParams} = useCalculationStore();
   const { inn, customerName, planned_start_date, slaIds, description } = params;
   const [innError, setInnError] = useState<string | null>(null);
 
@@ -26,6 +26,10 @@ export default function NewCalculation() {
     }
     return "";
   }, [slaIds, customerName, planned_start_date]);
+
+  useEffect(() => {
+  resetParams(); 
+  }, []);
 
   useEffect(() => {
     if (inn && inn.length !== 10) {

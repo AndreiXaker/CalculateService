@@ -77,7 +77,7 @@ export default function OrderEdit() {
   const [manualPrice, setManualPrice] = useState('')
   const [manualEbayPrice, setManualEbayPrice] = useState('')
   const [manualManufacturer, setManualManufacturer] = useState('')
-  const [gptQuery, setGptQuery] = useState('')
+  const [gptDescription, setGptDescription] = useState('')
  
 
   const normalizePrice = (price: string | number | null | undefined) => {
@@ -344,27 +344,36 @@ export default function OrderEdit() {
   };
 
 
-  const handleGptSearch = async () => {
-    if (!gptQuery.trim()) {
-      message.warning('Введите текст для GPT поиска')
-      return
-    }
-    setLoadingSearch(true)
-    try {
-      const pids = await GptSearch(gptQuery.trim())
-     
-      if (!pids.length) {
-        message.error('GPT не нашёл ни одного PID')
-        return
-      }
-      await handleSearch(pids.join(','))
-    } catch (err) {
-      console.error('Ошибка при GPT поиске:', err)
-      message.error('Ошибка при GPT поиске')
-    } finally {
-      setLoadingSearch(false)
-    }
+  const handleGptSearch: () => Promise<void> = async () => {
+  let description = gptDescription.trim();
+
+  if (!description && unknownPid.trim()) {
+    description = unknownPid.trim();
+    setGptDescription(description); 
   }
+
+  if (!description) {
+    message.warning('Введите описание для GPT поиска');
+    return;
+  }
+
+  setLoadingSearch(true);
+
+  try {
+    const pids = await GptSearch(description);
+
+    if (!pids.length) {
+      message.warning('GPT не нашёл ни одного SKU');
+    } else {
+      await handleSearch(pids.join(','));
+    }
+  } catch (err) {
+    console.error('Ошибка GPT поиска:', err);
+    message.error('Ошибка при GPT поиске');
+  } finally {
+    setLoadingSearch(false);
+  }
+};
 
   const handleUnknownProductSearch = async () => {
     const pid = unknownPid.trim().toUpperCase();
@@ -664,13 +673,13 @@ const handleSave = async (values: any) => {
             onSearch={handleSearch}
             style={{ flex: 1 }}
           />
-          <Input
+          {/* <Input
             placeholder="GPT поиск"
             value={gptQuery}
             onChange={e => setGptQuery(e.target.value)}
             style={{ width: 200 }}
           />
-          <Button onClick={handleGptSearch}>GPT</Button>
+          <Button onClick={handleGptSearch}>GPT</Button> */}
           <Upload
             accept=".xlsx,.xls"
             showUploadList={false}
@@ -703,6 +712,29 @@ const handleSave = async (values: any) => {
           onChange={e => setUnknownPid(e.target.value)}
           disabled={isProductMissing}
         />
+
+        {isProductMissing && (
+          <div>
+            <Button
+          type="primary"
+          className="mt-2"
+          onClick={handleGptSearch}
+          loading={loadingSearch}
+          >
+            Поиск GPT
+          </Button>
+          <Input.TextArea
+          placeholder="Введите описание для поиска GPT"
+          value={gptDescription}
+          rows={2}
+          onChange={e => setGptDescription(e.target.value)}
+          />
+          
+          </div>
+          )
+        }
+  
+
         {isProductMissing && (
           <div className="flex flex-col gap-2 mt-2">
             <Input

@@ -227,7 +227,7 @@ const handleCancelOrderAccess = async () => {
       </thead>
       <tbody>
       {Object.entries(data.support_costs).map(([sla, periods]) => {
-        const slaFiles = data.order_files?.filter(file => file.kind === "sla_doc") || []
+        const slaFiles = data.order_files?.filter(file => file.kind === "sla_pdf") || []
         const relatedFile = slaFiles.find(file => file.file_url.toLowerCase().includes(sla.toLowerCase()))
 
         return (
@@ -350,9 +350,9 @@ const handleCancelOrderAccess = async () => {
               <tr key={idx} className="border-t">
                 <td className="border px-4 py-2">{item.sku}</td>
                 <td className="border px-4 py-2">{item.manufacturer || "-"}</td>
-                <td className="border px-4 py-2 text-center">{item.quantity}</td>
                 <td className="border px-4 py-2 text-right">{item.price_gpl}</td>
                 <td className="border px-4 py-2 text-right">{item.price_ebay}</td>
+                <td className="border px-4 py-2 text-center">{item.quantity}</td>
                 {userRole === "manager" && (
                   <td className="border px-4 py-2 text-center">{item.zip_quantity}</td>
                 )}

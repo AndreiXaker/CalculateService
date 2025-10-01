@@ -157,8 +157,8 @@ const handleUnknownProductSearch = async () => {
     const ebay = result.prices?.ebay;
     const it = result.prices?.it;
 
-    const hasGpl = !!gpl?.price_gpl;
-    const hasEbay = !!ebay?.price_gpl;
+    const hasGpl = !!gpl?.price_usd;
+    const hasEbay = !!ebay?.price_usd;
 
     if (hasGpl && hasEbay) {
      
@@ -168,7 +168,7 @@ const handleUnknownProductSearch = async () => {
         vendor: it?.vendor || gpl?.vendor || '',
         description: it?.description || gpl?.description || 'Нет описания',
         price_gpl: Number(gpl.price_gpl),
-        ebay_price: Number(ebay.price_gpl),
+        ebay_price: Number(ebay.price_ebay),
         loaded_at: gpl?.loaded_at
           ? new Date(gpl.loaded_at).toLocaleString('ru-RU')
           : ebay?.loaded_at
@@ -183,8 +183,8 @@ const handleUnknownProductSearch = async () => {
     } else {
       
       setIsProductMissing(true);
-      setManualPrice(hasGpl ? String(gpl.price_gpl) : "");
-      setManualEbayPrice(hasEbay ? String(ebay.price_gpl) : "");
+      setManualPrice(hasGpl ? String(gpl.price_usd) : "");
+      setManualEbayPrice(hasEbay ? String(ebay.price_usd) : "");
       setUnknownPid(pid);
       message.info("Не хватает цены. Укажите недостающую вручную.");
     }
@@ -792,13 +792,23 @@ const handleSearch = async (value: string) => {
             type="number"
             placeholder="Введите цену вручную"
             value={manualPrice}
-            onChange={(e) => setManualPrice(e.target.value)}
+            onChange={(e) => {
+            const val = e.target.value.replace(',', '.');
+            if (/^[0-9]*[.,]?[0-9]*$/.test(val) || val === '') {
+              setManualPrice(val);
+            }
+          }}
           />
           <Input
           type="number"
           placeholder="Введите цену eBay вручную"
           value={manualEbayPrice}
-          onChange={(e) => setManualEbayPrice(e.target.value)}
+          onChange={(e) => {
+          const val = e.target.value.replace(',', '.');
+          if (/^[0-9]*[.,]?[0-9]*$/.test(val) || val === '') {
+            setManualEbayPrice(val);
+          }
+        }}
         />
         </>
         )}

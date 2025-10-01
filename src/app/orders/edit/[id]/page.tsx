@@ -703,7 +703,7 @@ const handleSave = async (values: any) => {
         open={isModalVisible}
         onCancel={resetUnknownState}
         onOk={isProductMissing ? handleManualCreateProduct : handleUnknownProductSearch}
-        okText={isProductMissing ? "Создать" : "Найти"}
+        okText={isProductMissing ? "Создать продукт" : "Найти"}
         cancelText="Отмена"
       >
         <Input

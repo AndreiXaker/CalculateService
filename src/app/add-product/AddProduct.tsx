@@ -620,7 +620,7 @@ const handleSearch = async (value: string) => {
     message.success('Расчет успешно выполнен')
     setSelectedItems([])
     setSelectedProducts([])
-    router.push('/main')
+    router.push(`/orders/${response.order_id}`)
     }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err : any) {

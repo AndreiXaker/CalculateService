@@ -366,7 +366,7 @@ const handleSearch = async (value: string) => {
       const product: Product = {
         key: pid,
         sku: pid,
-        vendor: (it?.vendor || gpl?.vendor || '') as string,
+        vendor: (it?.vendor || gpl?.vendor || gpl?.manufacturer || it?.manufacturer || '') as string,
         description: (it?.description || gpl?.description || 'Нет описания') as string,
         price_gpl: toNumber(it?.price_usd ?? it?.price_gpl ?? gpl?.price_usd ?? gpl?.price_gpl) ?? null,
         loaded_at: it?.loaded_at
@@ -404,8 +404,8 @@ const handleSearch = async (value: string) => {
               if ((!product.description || product.description === 'Нет описания') && maybeEbayEntry.description) {
                 product.description = maybeEbayEntry.description;
               }
-              if ((!product.vendor || product.vendor === '') && (maybeEbayEntry.vendor || maybeEbayEntry.brand)) {
-                product.vendor = maybeEbayEntry.vendor || maybeEbayEntry.brand || product.vendor;
+              if ((!product.vendor || product.vendor === '') && (maybeEbayEntry.vendor || maybeEbayEntry.brand || maybeEbayEntry.manufacturer)) {
+                product.vendor = maybeEbayEntry.vendor || maybeEbayEntry.brand || maybeEbayEntry.manufacturer || product.vendor;
               }
 
               const ts = maybeEbayEntry.timestamp ?? maybeEbayEntry.loaded_at;
@@ -437,8 +437,11 @@ const handleSearch = async (value: string) => {
               if ((!product.description || product.description === 'Нет описания') && itData.description) {
                 product.description = itData.description;
               }
-              if ((!product.vendor || product.vendor === '') && (itData.vendor || itData.brand)) {
-                product.vendor = itData.vendor || itData.brand || product.vendor;
+              if (
+                (!product.vendor || product.vendor === '') &&
+                (itData.vendor || itData.brand || itData.manufacturer)
+              ) {
+                product.vendor = itData.vendor || itData.brand || itData.manufacturer || product.vendor;
               }
               if (itData.loaded_at) product.loaded_at = new Date(itData.loaded_at).toLocaleString('ru-RU');
               if (itData.timestamp) product.loaded_at = new Date(itData.timestamp).toLocaleString('ru-RU');

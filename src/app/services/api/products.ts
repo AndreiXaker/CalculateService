@@ -79,7 +79,7 @@ export const profile = async (paramsOrUrl?: Record<string, any> | string) => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const calculateOrder = async (orderPayload : any ) => {
-  console.log('', JSON.stringify(orderPayload, null, 2));
+  
   const response = await productApi.post('/product/api/orders/calculate/', orderPayload)
   return response.data
 }
@@ -166,7 +166,7 @@ export const waitForJobResult = async (
 //Создание продукта
 export const createProduct = async(data : INewProduct) => {
   try {
-    console.log('Данные для создания продукта:', data);
+    
     const response = await productApi.post("/product/manual-product-create/",data)
     return response.data
   } catch (error) {

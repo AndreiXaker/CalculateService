@@ -67,9 +67,9 @@ const handleCancelOrderAccess = async () => {
     if (!data?.id) return
     setSubmitting(true)
     try {
-      await orderAccess(data.id)
+      const updatedOrder = await orderAccess(data.id)
       message.success('Заявка отправлена на одобрение')
-     router.refresh()
+      setData((prev) => (prev ? { ...prev, status: updatedOrder.status } : prev))
     } catch {
       message.error('Ошибка при отправке заявки')
     } finally {
@@ -148,9 +148,9 @@ const handleCancelOrderAccess = async () => {
             <>
               <button
                 onClick={handleOrderAccess}
-                disabled={submitting || data.status === "in_review"}
+                disabled={submitting || data.status === "pending"}
                 className={`px-4 py-2 rounded-lg text-white font-medium transition ${
-                  submitting || data.status === "in_review"
+                  submitting || data.status === "pending"
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700"
                 }`}

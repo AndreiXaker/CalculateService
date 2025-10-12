@@ -5,6 +5,7 @@ import { message, Spin } from "antd"
 import { getOrderById, orderAccess, acceptOrder } from "@/app/services/api/products"
 import { IOrder } from "@/app/types/orders.interface"
 import { cancelOrderAccess } from "@/app/services/api/products"
+import Link from "next/link"
 
 export default function OrderDetail() {
   const { id } = useParams()
@@ -68,7 +69,7 @@ const handleCancelOrderAccess = async () => {
     try {
       await orderAccess(data.id)
       message.success('Заявка отправлена на одобрение')
-      router.push('/main')
+     router.refresh()
     } catch {
       message.error('Ошибка при отправке заявки')
     } finally {
@@ -112,9 +113,11 @@ const handleCancelOrderAccess = async () => {
     <div className="p-4 sm:p-6 max-w-screen-xl mx-auto space-y-6">
      
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">
-          {/* {data.name} <span className="text-gray-500">#{data.id}</span> */}
-        </h2>
+        <Link href="/main">
+        <button className="flex items-center px-4 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-700 transition">
+          <span className="ml-1">Расчеты</span>
+        </button> 
+        </Link>
 
         <div className="flex gap-3">
         {userRole === "manager" ? (
@@ -145,9 +148,9 @@ const handleCancelOrderAccess = async () => {
             <>
               <button
                 onClick={handleOrderAccess}
-                disabled={submitting || data.status === "submitted"}
+                disabled={submitting || data.status === "in_review"}
                 className={`px-4 py-2 rounded-lg text-white font-medium transition ${
-                  submitting || data.status === "submitted"
+                  submitting || data.status === "in_review"
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700"
                 }`}
@@ -202,6 +205,10 @@ const handleCancelOrderAccess = async () => {
       <div className="flex justify-between">
         <span className="text-gray-500">Дата создания:</span>
         <span className="font-medium">{new Date(data.created_at).toLocaleString('ru-RU')}</span>
+      </div> 
+      <div className="flex justify-between">
+        <span className="text-gray-500">Дата начала действия контракта:</span>
+        <span className="font-medium">{data.planned_start_date}</span>
       </div> 
     </div>
   </div>

@@ -717,7 +717,7 @@ const handleSave = async (values: any) => {
           <div>
             <Button
           type="primary"
-          className="mt-2"
+          className="mt-2 mb-1"
           onClick={handleGptSearch}
           loading={loadingSearch}
           >

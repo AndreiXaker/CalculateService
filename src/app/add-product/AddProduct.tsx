@@ -10,7 +10,8 @@ import {
   Popconfirm,
   message,
   Modal,
-  Popover
+  Popover,
+  Spin
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { addBase, createProduct, GptSearch, ImportExcel, SearchPids, searchUnknownProduct, waitForJobResult } from '../services/api/products';
@@ -25,7 +26,7 @@ import { calculateOrder } from '../services/api/products';
 // import { INewProduct } from '../types/product.interface';
 import { useRouter } from 'next/navigation';
 import { INewProduct } from '../types/product.interface';
-import { AiOutlineRobot } from 'react-icons/ai';
+// import { AiOutlineRobot } from 'react-icons/ai';
 
 interface RawResponse {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,8 +61,7 @@ export default function ProductPage() {
   const[ unknownPid, setUnknownPid] = useState('')
   const [manualPrice, setManualPrice] = useState('');
   const [isProductMissing, setIsProductMissing] = useState(false);
-  const [gptInput, setGptInput] = useState('');
-  const [showGptBar, setShowGptBar] = useState(false);
+  // const [showGptBar, setShowGptBar] = useState(false);
   const { setSelectedProducts } = useProductStore()
   const { params } = useCalculationStore()
   const { inn, customerName, planned_start_date, slaIds, description } = params;
@@ -72,6 +72,7 @@ export default function ProductPage() {
   pageSize: 10,  
 });
 const [manualManufacturer, setManualManufacturer] = useState('');
+const [gptDescription, setGptDescription] = useState('')
 
 //   useEffect(() => {
 //   if (rows.length === 0) return;
@@ -195,28 +196,32 @@ const handleUnknownProductSearch = async () => {
 
 
 //GPT Поиск
-const handleGptSearch = async (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    message.warning("Введите текст для поиска PID");
+const handleGptSearch : () =>  Promise<void> = async () => {
+  let description = gptDescription.trim();
+
+  if (!description && unknownPid.trim()) {
+    description = unknownPid.trim();
+    setGptDescription(description); 
+  }
+
+  if (!description) {
+    message.warning('Введите описание для GPT поиска');
     return;
   }
 
-  try {
-    setLoadingSearch(true);
+  setLoadingSearch(true);
 
-    const pids = await GptSearch(trimmed);
+  try {
+    const pids = await GptSearch(description);
 
     if (!pids.length) {
-      message.error("GPT не нашёл ни одного PID");
-      return;
+      message.warning('GPT не нашёл ни одного SKU');
+    } else {
+      await handleSearch(pids.join(','));
     }
-
-  
-    await handleSearch(pids.join(','));
   } catch (err) {
-    console.error(err);
-    message.error("Ошибка при поиске через GPT");
+    console.error('Ошибка GPT поиска:', err);
+    message.error('Ошибка при GPT поиске');
   } finally {
     setLoadingSearch(false);
   }
@@ -502,6 +507,24 @@ const handleSearch = async (value: string) => {
     {title : 'Производитель', dataIndex : 'vendor',key : 'vendor'},
     { title: 'Цена GPL, $', dataIndex: 'price_gpl', key: 'price_gpl' },
     { title: 'Цена eBay, $', dataIndex: 'ebay_price', key: 'ebay_price' },
+    {
+    title: 'Количество',
+    dataIndex: 'quantity',
+    key: 'quantity',
+    render: (_, record, index) => (
+      <Input
+        type="number"
+        min={1}
+        value={record.quantity ?? 1}
+        onChange={(e) => {
+          const updated = [...selectedItems];
+          updated[index].quantity = parseInt(e.target.value, 10) || 1;
+          setSelectedItems(updated);
+        }}
+        style={{ width: 80 }}
+      />
+    ),
+  },
     { title: 'Добавлено', dataIndex: 'loaded_at', key: 'loaded_at' },
     {
       title: 'Действия',
@@ -523,24 +546,7 @@ const handleSearch = async (value: string) => {
         </Popconfirm>
       ),
     },
-    {
-    title: 'Количество',
-    dataIndex: 'quantity',
-    key: 'quantity',
-    render: (_, record, index) => (
-      <Input
-        type="number"
-        min={1}
-        value={record.quantity ?? 1}
-        onChange={(e) => {
-          const updated = [...selectedItems];
-          updated[index].quantity = parseInt(e.target.value, 10) || 1;
-          setSelectedItems(updated);
-        }}
-        style={{ width: 80 }}
-      />
-    ),
-  },
+    
   ];
 
   const rowSelection = {
@@ -686,16 +692,16 @@ const handleSearch = async (value: string) => {
           Создать продукт
         </Button>
         <div className="w-full">
-        <Button
+        {/* <Button
           type="default"
           icon={<AiOutlineRobot size={18} style={{verticalAlign : 'middle'}}/>}
           onClick={() => setShowGptBar(prev => !prev)}
           className="flex items-center"
         >
           {showGptBar ? 'Скрыть GPT-поиск' : 'GPT-поиск по описанию'}
-        </Button>
+        </Button> */}
 
-        <div
+        {/* <div
           className={`overflow-hidden transition-all duration-500 ease-in-out ${
             showGptBar ? 'max-h-80 mt-4 opacity-100' : 'max-h-0 opacity-0'
           }`}
@@ -721,7 +727,7 @@ const handleSearch = async (value: string) => {
           <p className="text-gray-500 mt-2 text-sm">
             GPT попытается найти соответствующие SKU на основе описания, которое вы введёте.
           </p>
-        </div>
+        </div> */}
       </div>
       </Space>
 
@@ -769,54 +775,73 @@ const handleSearch = async (value: string) => {
         </div>
       )}
       <Modal
-      title="Поиск неизвестного продуктов"
-      open={isModalVisible}
-      onCancel={resetUnknownState}
-      onOk={isProductMissing ? handleManualCreateProduct : handleUnknownProductSearch}
-      okText={isProductMissing ? "Создать продукт" : "Найти"}
-      cancelText="Отмена"
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        title="Добавление продукта"
+        open={isModalVisible}
+        onCancel={resetUnknownState}
+        onOk={isProductMissing ? handleManualCreateProduct : handleUnknownProductSearch}
+        okText={isProductMissing ? "Создать продукт" : "Найти"}
+        cancelText="Отмена"
+      >
         <Input
           placeholder="Введите SKU"
           value={unknownPid}
-          onChange={(e) => setUnknownPid(e.target.value)}
+          onChange={e => setUnknownPid(e.target.value)}
           disabled={isProductMissing}
         />
 
         {isProductMissing && (
-          <>
-          <Input
-            placeholder="Введите производителя"
-            value={manualManufacturer}
-            onChange={(e) => setManualManufacturer(e.target.value)}
+          <div>
+            <Button
+          type="primary"
+          className="mt-2 mb-1"
+          onClick={handleGptSearch}
+          loading={loadingSearch}
+          >
+            Поиск GPT
+          </Button>
+          <Input.TextArea
+          placeholder="Введите описание для поиска GPT"
+          value={gptDescription}
+          rows={2}
+          onChange={e => setGptDescription(e.target.value)}
           />
-          <Input
-            type="number"
-            placeholder="Введите цену вручную"
-            value={manualPrice}
+          
+          </div>
+          )
+        }
+  
+
+        {isProductMissing && (
+          <div className="flex flex-col gap-2 mt-2">
+            <Input
+              placeholder="Производитель"
+              value={manualManufacturer}
+              onChange={e => setManualManufacturer(e.target.value)}
+            />
+            <Input
+              placeholder="Цена GPL"
+              value={manualPrice}
+              onChange={(e) => {
+                const val = e.target.value.replace(',', '.');
+                if (/^[0-9]*[.,]?[0-9]*$/.test(val) || val === '') {
+                  setManualPrice(val);
+                }
+              }}
+            />
+            <Input
+            placeholder="Цена eBay"
+            value={manualEbayPrice}
             onChange={(e) => {
-            const val = e.target.value.replace(',', '.');
-            if (/^[0-9]*[.,]?[0-9]*$/.test(val) || val === '') {
-              setManualPrice(val);
-            }
-          }}
+              const val = e.target.value.replace(',', '.');
+              if (/^[0-9]*[.,]?[0-9]*$/.test(val) || val === '') {
+                setManualEbayPrice(val);
+              }
+            }}
           />
-          <Input
-          type="number"
-          placeholder="Введите цену eBay вручную"
-          value={manualEbayPrice}
-          onChange={(e) => {
-          const val = e.target.value.replace(',', '.');
-          if (/^[0-9]*[.,]?[0-9]*$/.test(val) || val === '') {
-            setManualEbayPrice(val);
-          }
-        }}
-        />
-        </>
+          </div>
         )}
-      </div>
-    </Modal>
+        {loadingSearch && <Spin size="small" style={{ marginTop: 8 }} />}
+      </Modal>
     </div>
   );
 }

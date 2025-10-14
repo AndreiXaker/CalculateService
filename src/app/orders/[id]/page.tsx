@@ -320,7 +320,7 @@ const handleCancelOrderAccess = async () => {
           </ul>
         </div>
       )} */}
-      {userRole === "manager" && data.excel_url && (
+      {data.excel_url && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-2">
           <h3 className="text-lg font-medium text-gray-900 mb-2">Выбранные продукты Excel</h3>
           <a

@@ -96,6 +96,7 @@ export default function OrderEdit() {
       try {
         setLoading(true)
         const order: IOrder = await editOrder(orderId)
+      
         
 
         const selected = Object.keys(order.support_costs || {})
@@ -106,7 +107,7 @@ export default function OrderEdit() {
         form.setFieldsValue({
           inn: order.inn,
           customer_name: order.customer_name,
-          planned_start_date: order.planned_start_date ? dayjs(order.planned_start_date) : null,
+          planned_start_date: order.planned_start_date ? dayjs(order.planned_start_date,"DD.MM.YYYY") : null,
           description: order.description,
           sla_ids: selected
         })
@@ -648,7 +649,9 @@ const handleSave = async (values: any) => {
           <Input />
         </Form.Item>
         <Form.Item label="Планируемая дата начала действия контракта" name="planned_start_date">
-          <DatePicker style={{ width: '100%' }} />
+          <DatePicker style={{ width: '100%' }} 
+          format="DD.MM.YYYY"
+          />
         </Form.Item>
         {/* <Form.Item label="Описание" name="description">
           <Input.TextArea rows={3} />

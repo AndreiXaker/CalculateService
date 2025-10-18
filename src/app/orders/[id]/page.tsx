@@ -148,7 +148,7 @@ const handleCancelOrderAccess = async () => {
             <>
               <button
                 onClick={handleOrderAccess}
-                disabled={submitting || data.status === "pending"}
+                disabled={submitting || data.status === "pending" || data.status === "in_review"}
                 className={`px-4 py-2 rounded-lg text-white font-medium transition ${
                   submitting || data.status === "pending"
                     ? "bg-gray-400 cursor-not-allowed"
@@ -329,7 +329,7 @@ const handleCancelOrderAccess = async () => {
             className="text-blue-600 hover:underline"
             download
           >
-            Выгрузить отсчет
+            Выгрузить отчет
           </a>
         </div>
               )}
@@ -346,7 +346,7 @@ const handleCancelOrderAccess = async () => {
               <th className="border px-4 py-2 text-right">Цена eBay</th>
               <th className="border px-4 py-2 text-center">Количество</th>
               {userRole === "manager" && (
-              <th className="border px-4 py-2 text-center">Кол-во ЗИП</th>
+              <th className="border px-4 py-2 text-center">Количество ЗИП</th>
               )}
               {userRole === "manager" && (
               <th className="border px-4 py-2 text-right">RMA стоимость</th>)}

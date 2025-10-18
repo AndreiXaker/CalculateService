@@ -89,11 +89,12 @@ export const GptSearch = async (description: string): Promise<string[]> => {
   try {
     const response = await productApi.post("/product/api/pid-extract/", {description}, {
     });
-
+    // console.log('asd',response.data)
     const pidString = response.data?.pid
     if (pidString) {
       return JSON.parse(pidString);
     }
+    
     return [];
   } catch (error) {
     console.error("Ошибка GPT запроса:", error);

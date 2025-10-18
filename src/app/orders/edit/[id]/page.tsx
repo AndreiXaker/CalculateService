@@ -19,7 +19,7 @@ import {
 import { UploadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import type { ColumnsType } from 'antd/es/table'
-import { addBase, editOrder, GptSearch, saveEditedOrder } from '@/app/services/api/products'
+import { addBase, editOrder, saveEditedOrder } from '@/app/services/api/products'
 import {
   searchUnknownProduct,
   createProduct,
@@ -29,6 +29,7 @@ import {
 } from '@/app/services/api/products'
 import { IOrder } from '@/app/types/orders.interface'
 import { INewProduct } from '@/app/types/product.interface'
+
 
 
 interface RawResponse {
@@ -77,7 +78,7 @@ export default function OrderEdit() {
   const [manualPrice, setManualPrice] = useState('')
   const [manualEbayPrice, setManualEbayPrice] = useState('')
   const [manualManufacturer, setManualManufacturer] = useState('')
-  const [gptDescription, setGptDescription] = useState('')
+  // const [gptDescription, setGptDescription] = useState('')
  
 
   const normalizePrice = (price: string | number | null | undefined) => {
@@ -193,188 +194,177 @@ export default function OrderEdit() {
 }
 
   const handleSearch = async (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      message.warning('Введите запрос для поиска');
-      return;
-    }
-  
-    setLoadingSearch(true);
-  
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const toNumber = (v: any): number | null => {
-      if (v === null || v === undefined) return null;
-      const s = String(v).trim();
-      if (!s) return null;
-      const normalized = s.replace(/\s+/g, '').replace(',', '.');
-      const n = Number(normalized);
-      return Number.isFinite(n) ? n : null;
-    };
-  
-    try {
-      const pids = trimmed
-        .split(/[\s,;]+/)
-        .map((s) => s.trim().toUpperCase())
-        .filter(Boolean);
-  
-      if (!pids.length) {
-        message.warning('Неверный формат ввода');
-        return;
-      }
-  
-      const data = (await SearchPids(pids)) as RawResponse & {
-        job_id_itprice: string | null;
-        job_id_ebay: string | null;
-      };
-  
-      const result: Product[] = [];
-  
-      for (const pid of pids) {
-        const gpl = data.found_in_gpl?.[pid];
-        const it = data.found_in_itprice?.[pid];
-        const ebay = data.found_in_ebay?.[pid];
-  
-        const hasIt = it && it !== 'no data';
-        const hasEbay = ebay && ebay !== 'no data';
-  
-        const product: Product = {
-          key: pid,
-          sku: pid,
-          vendor: (it?.vendor || gpl?.vendor || '') as string,
-          description: (it?.description || gpl?.description || 'Нет описания') as string,
-          price_gpl: toNumber(it?.price_usd ?? it?.price_gpl ?? gpl?.price_usd ?? gpl?.price_gpl) ?? null,
-          loaded_at: it?.loaded_at
-            ? new Date(it.loaded_at).toLocaleString('ru-RU')
-            : gpl?.loaded_at
-            ? new Date(gpl.loaded_at).toLocaleString('ru-RU')
-            : '',
-          price_ebay: toNumber(ebay?.median_usd ?? ebay?.median ?? ebay?.price_gpl) ?? null,
-          quantity: 1,
-          job_id_itprice: data.job_id_itprice,
-          job_id_ebay: data.job_id_ebay,
-        };
-  
-        
-        if (!hasEbay && data.job_id_ebay) {
-          try {
-            const ebayResult = await waitForJobResult(data.job_id_ebay, 'ebay');
-            if (ebayResult) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const maybeEbayEntry: any =
-                (ebayResult.found_in_ebay && ebayResult.found_in_ebay[pid]) ||
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (Array.isArray(ebayResult.result) && ebayResult.result.find((r: any) => String(r.sku).toUpperCase() === pid)) ||
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (Array.isArray(ebayResult) ? ebayResult.find((r: any) => String(r.sku).toUpperCase() === pid) : null) ||
-                ebayResult;
-  
-              if (maybeEbayEntry) {
-                // median, median_usd, adjusted_price_usd, price_gpl и т.д.
-                const medianVal = maybeEbayEntry.median ?? maybeEbayEntry.median_usd ?? maybeEbayEntry.adjusted_price_usd ?? maybeEbayEntry.price_gpl ?? maybeEbayEntry.price_usd;
-                const parsed = toNumber(medianVal);
-                if (parsed !== null) product.price_ebay = parsed;
-  
-                // не перезаписываем существующие нормальные description/vendor пустыми
-                if ((!product.description || product.description === 'Нет описания') && maybeEbayEntry.description) {
-                  product.description = maybeEbayEntry.description;
-                }
-                if ((!product.vendor || product.vendor === '') && (maybeEbayEntry.vendor || maybeEbayEntry.brand)) {
-                  product.vendor = maybeEbayEntry.vendor || maybeEbayEntry.brand || product.vendor;
-                }
-  
-                const ts = maybeEbayEntry.timestamp ?? maybeEbayEntry.loaded_at;
-                if (ts) product.loaded_at = new Date(ts).toLocaleString('ru-RU');
-              }
-            }
-          } catch (err) {
-            console.error(`Job ebay для ${pid} не удался:`, err);
-          }
-        }
-  
-        
-        if (!hasIt && data.job_id_itprice) {
-          try {
-            const itResult = await waitForJobResult(data.job_id_itprice, 'itprice');
-            if (itResult) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const itData: any =
-                (itResult.found_in_itprice && itResult.found_in_itprice[pid]) ||
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (Array.isArray(itResult) ? itResult.find((r: any) => String(r.sku).toUpperCase() === pid) : itResult) ||
-                itResult;
-  
-              if (itData) {
-                const parsedGpl = toNumber(itData.price_gpl ?? itData.price_usd ?? itData.price);
-                if (parsedGpl !== null) product.price_gpl = parsedGpl;
-  
-                if ((!product.description || product.description === 'Нет описания') && itData.description) {
-                  product.description = itData.description;
-                }
-                if ((!product.vendor || product.vendor === '') && (itData.vendor || itData.brand)) {
-                  product.vendor = itData.vendor || itData.brand || product.vendor;
-                }
-                if (itData.loaded_at) product.loaded_at = new Date(itData.loaded_at).toLocaleString('ru-RU');
-                if (itData.timestamp) product.loaded_at = new Date(itData.timestamp).toLocaleString('ru-RU');
-              }
-            }
-          } catch (err) {
-            console.error(`Job itprice для ${pid} не удался:`, err);
-          }
-        }
-  
-        result.push(product);
-      }
-  
-      if (!result.length) {
-        message.info('Ничего не найдено ни по названию, ни по PID');
-        return;
-      }
-  
-      setProducts((prev) => {
-      const newItems = result.filter((item) => !prev.find((p) => p.key === item.key));
-      return [...newItems, ...prev];
-    });
-  
-      message.success(`Найдено и добавлено: ${result.length}`);
-    } catch (err) {
-      console.error(err);
-      message.error('Ошибка поиска');
-    } finally {
-      setLoadingSearch(false);
-    }
-  };
-
-
-  const handleGptSearch: () => Promise<void> = async () => {
-  let description = gptDescription.trim();
-
-  if (!description && unknownPid.trim()) {
-    description = unknownPid.trim();
-    setGptDescription(description); 
-  }
-
-  if (!description) {
-    message.warning('Введите описание для GPT поиска');
+  const trimmed = value.trim();
+  if (!trimmed) {
+    message.warning('Введите запрос для поиска');
     return;
   }
 
   setLoadingSearch(true);
 
+  // Преобразование строки в число, учитывая разные форматы
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const toNumber = (v: any): number | null => {
+    if (v === null || v === undefined) return null;
+    const s = String(v).trim();
+    if (!s) return null;
+    const normalized = s.replace(/\s+/g, '').replace(',', '.');
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : null;
+  };
+
   try {
-    const pids = await GptSearch(description);
+    const pids = trimmed
+      .split(/[\s,;]+/)
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
 
     if (!pids.length) {
-      message.warning('GPT не нашёл ни одного SKU');
-    } else {
-      await handleSearch(pids.join(','));
+      message.warning('Неверный формат ввода');
+      return;
     }
+
+    // Запрос по PID
+    const data = (await SearchPids(pids)) as RawResponse & {
+      job_id_itprice: string | null;
+      job_id_ebay: string | null;
+    };
+
+    const result: Product[] = [];
+
+ // В начале, вне цикла
+const itpriceResult = data.job_id_itprice ? await waitForJobResult(data.job_id_itprice, 'itprice') : null;
+const ebayResult = data.job_id_ebay ? await waitForJobResult(data.job_id_ebay, 'ebay') : null;
+
+for (const pid of pids) {
+  const gpl = data.found_in_gpl?.[pid];
+  const it = data.found_in_itprice?.[pid];
+  const ebay = data.found_in_ebay?.[pid];
+  let vendor = it?.vendor || gpl?.vendor || it?.manufacturer || gpl?.manufacturer || it?.brand || gpl?.brand || '';
+
+  if ((!vendor || vendor === '') && itpriceResult) {
+    const itData =
+      itpriceResult.found_in_itprice?.[pid] ||
+      (Array.isArray(itpriceResult) ? itpriceResult.find((r) => String(r.sku).toUpperCase() === pid) : null);
+
+    if (itData) {
+      vendor = itData.vendor || itData.brand || itData.manufacturer || vendor;
+    }
+  }
+
+  const finalVendor = vendor || '';
+
+  
+  let price_gpl = toNumber(it?.price_usd ?? it?.price_gpl ?? gpl?.price_usd ?? gpl?.price_gpl) ?? null;
+  let ebay_price = toNumber(ebay?.median_usd ?? ebay?.median ?? ebay?.price_gpl) ?? null;
+
+  // Если цена itprice отсутствует, пытаемся взять из job результата
+  if ((price_gpl === null || price_gpl === 0) && itpriceResult) {
+    // Поиск данных по pid в itpriceResult
+    const itData =
+      itpriceResult.found_in_itprice?.[pid] ||
+      (Array.isArray(itpriceResult) ? itpriceResult.find((r) => String(r.sku).toUpperCase() === pid) : null);
+
+    if (itData) {
+      const jobPrice = toNumber(itData.price_usd ?? itData.price_gpl ?? itData.price);
+      if (jobPrice !== null) price_gpl = jobPrice;
+    }
+    
+  }
+  
+
+  // Аналогично для ebay_price
+  if ((ebay_price === null || ebay_price === 0) && ebayResult) {
+    const ebayData =
+      ebayResult.found_in_ebay?.[pid] ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (Array.isArray(ebayResult.result) ? ebayResult.result.find((r: { sku: any; }) => String(r.sku).toUpperCase() === pid) : null) ||
+      (Array.isArray(ebayResult) ? ebayResult.find((r) => String(r.sku).toUpperCase() === pid) : null);
+
+    if (ebayData) {
+      const jobPrice = toNumber(ebayData.median ?? ebayData.median_usd ?? ebayData.price_usd ?? ebayData.price_gpl);
+      if (jobPrice !== null) ebay_price = jobPrice;
+    }
+  }
+
+  const product: Product = {
+    key: pid,
+    sku: pid,
+    vendor: finalVendor,
+    description: (it?.description || gpl?.description || 'Нет описания') as string,
+    price_gpl,
+    loaded_at: it?.loaded_at
+      ? new Date(it.loaded_at).toLocaleString('ru-RU')
+      : gpl?.loaded_at
+      ? new Date(gpl.loaded_at).toLocaleString('ru-RU')
+      : '',
+    price_ebay: ebay_price,
+    quantity: 1,
+    job_id_itprice: data.job_id_itprice,
+    job_id_ebay: data.job_id_ebay,
+  };
+
+  
+  const hasData =
+    product.price_gpl !== null ||
+    product.price_ebay !== null ||
+    (product.description && product.description !== 'Нет описания') ||
+    (product.vendor && product.vendor !== '');
+
+  if (hasData) {
+    console.log(`Добавляем продукт ${pid} с производителем:`, finalVendor);
+    result.push(product);
+  } else {
+    console.log(`⛔ Пропущен ${pid}: нет полезных данных`, product);
+  }
+}
+
+    setProducts((prev) => {
+      const newItems = result.filter((item) => !prev.find((p) => p.key === item.key));
+      return [...newItems, ...prev];
+    });
+
+    message.success(`Найдено и добавлено: ${result.length}`);
   } catch (err) {
-    console.error('Ошибка GPT поиска:', err);
-    message.error('Ошибка при GPT поиске');
+    console.error(err);
+    message.error('Ошибка поиска');
   } finally {
     setLoadingSearch(false);
   }
 };
+
+
+
+//   const handleGptSearch: () => Promise<void> = async () => {
+//   let description = gptDescription.trim();
+
+//   if (!description && unknownPid.trim()) {
+//     description = unknownPid.trim();
+//     setGptDescription(description); 
+//   }
+
+//   if (!description) {
+//     message.warning('Введите описание для GPT поиска');
+//     return;
+//   }
+
+//   setLoadingSearch(true);
+
+//   try {
+//     const pids = await GptSearch(description);
+
+//     if (!pids.length) {
+//       message.warning('GPT не нашёл ни одного SKU');
+//     } else {
+//       await handleSearch(pids.join(','));
+//     }
+//   } catch (err) {
+//     console.error('Ошибка GPT поиска:', err);
+//     message.error('Ошибка при GPT поиске');
+//   } finally {
+//     setLoadingSearch(false);
+//   }
+// };
 
   const handleUnknownProductSearch = async () => {
     const pid = unknownPid.trim().toUpperCase();
@@ -550,7 +540,6 @@ const handleSave = async (values: any) => {
     router.push(`/orders/${orderId}`);
   } catch (err) {
     console.error('Ошибка при сохранении отсчета:', err);
-    message.error('Ошибка при сохранении отсчета');
   } finally {
     setSubmitting(false);
   }
@@ -716,7 +705,7 @@ const handleSave = async (values: any) => {
           disabled={isProductMissing}
         />
 
-        {isProductMissing && (
+        {/* {isProductMissing && (
           <div>
             <Button
           type="primary"
@@ -735,7 +724,7 @@ const handleSave = async (values: any) => {
           
           </div>
           )
-        }
+        } */}
   
 
         {isProductMissing && (

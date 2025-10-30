@@ -12,7 +12,7 @@ export default function ResetPasswordPage() {
   const onFinish = async (values: { email: string }) => {
     setLoading(true)
     try {
-      await axios.post('https://calculate-bsshop.ru/users/auth/users/reset_password/', {
+      await axios.post('https://91.229.9.241/users/auth/users/reset_password/', {
         email: values.email,
       })
       message.success('Ссылка для восстановления пароля отправлена на ваш email')

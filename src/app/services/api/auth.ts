@@ -4,7 +4,7 @@ import { ILogin,IResetPassword } from "@/app/types/user.interface";
 export const login = async (data: ILogin) => {
   try {
     const response = await axios.post(
-      'https://91.229.9.241/users/auth/jwt/create/',
+      'https://calc.net-eng.ru/users/auth/jwt/create/',
       data,
     );
     return response.data;
@@ -18,7 +18,7 @@ export const login = async (data: ILogin) => {
 
 export const resetPassword = async (data: IResetPassword) => {
    try {
-    const response = await axios.post('https://91.229.9.241/users/auth/users/reset_password_confirm/', data);
+    const response = await axios.post('https://calc.net-eng.ru/users/auth/users/reset_password_confirm/', data);
     return response.data; 
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {

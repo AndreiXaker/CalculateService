@@ -4,7 +4,7 @@ import { INewProduct } from "@/app/types/product.interface";
 import { message } from "antd";
 
 const productApi = axios.create({
-  baseURL : 'https://91.229.9.241',
+  baseURL : 'https://calc.net-eng.ru',
   headers : {
     'Content-Type' : 'application/json'
   }, 

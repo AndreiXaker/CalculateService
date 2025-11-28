@@ -254,39 +254,6 @@ const handleUnknownSearch = async () => {
 };
 
 
-
-//GPT Поиск
-// const handleGptSearch : () =>  Promise<void> = async () => {
-//   let description = gptDescription.trim();
-
-//   if (!description && unknownPid.trim()) {
-//     description = unknownPid.trim();
-//     setGptDescription(description); 
-//   }
-
-//   if (!description) {
-//     message.warning('Введите описание для GPT поиска');
-//     return;
-//   }
-
-//   setLoadingSearch(true);
-
-//   try {
-//     const pids = await GptSearch(description);
-//     console.log('pids',pids)
-//     if (!pids.length) {
-//       message.warning('GPT не нашёл ни одного SKU');
-//     } else {
-//       await handleSearch(pids.join(','));
-//     }
-//   } catch (err) {
-//     console.error('Ошибка GPT поиска:', err);
-//     message.error('Ошибка при GPT поиске');
-//   } finally {
-//     setLoadingSearch(false);
-//   }
-// };
-
 //Создание продукта
 const handleManualCreateProduct = async () => {
   const pid = unknownPid.trim().toUpperCase();
@@ -425,8 +392,12 @@ const handleSearch = async (value: string) => {
       const it = data.found_in_itprice?.[pid];
       const ebay = data.found_in_ebay?.[pid];
 
-      const hasIt = it && it !== 'no data';
-      const hasEbay = ebay && ebay !== 'no data';
+      const hasIt = !!(it && it !== "no data" && (it.price_gpl || it.price_usd));
+      const hasEbay = !!(
+      ebay &&
+      ebay !== "no data" &&
+      (ebay.median || ebay.median_usd || ebay.adjusted_price_usd)
+    );
 
       const product: Product = {
         key: pid,
@@ -445,7 +416,7 @@ const handleSearch = async (value: string) => {
         job_id_ebay: data.job_id_ebay,
       };
 
-      
+     
       if (!hasEbay && data.job_id_ebay) {
         try {
           const ebayResult = await waitForJobResult(data.job_id_ebay, 'ebay');
@@ -458,6 +429,7 @@ const handleSearch = async (value: string) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (Array.isArray(ebayResult) ? ebayResult.find((r: any) => String(r.sku).toUpperCase() === pid) : null) ||
               ebayResult;
+              
 
             if (maybeEbayEntry) {
               // median, median_usd, adjusted_price_usd, price_gpl и т.д.
@@ -478,6 +450,7 @@ const handleSearch = async (value: string) => {
             }
           }
         } catch (err) {
+          console.log("EBAY CATCH TRIGGERED!");
           console.error(`Job ebay для ${pid} не удался:`, err);
         }
       }

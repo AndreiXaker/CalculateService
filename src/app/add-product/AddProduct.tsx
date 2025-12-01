@@ -136,11 +136,10 @@ const resetUnknownState = () => {
 
 
 
-//Поиск неизвестного продукта
 const handleUnknownSearch = async () => {
   const trimmed = unknownPid.trim().toUpperCase();
   if (!trimmed) {
-    message.warning('Введите SKU');
+    message.warning("Введите SKU");
     return;
   }
 
@@ -151,107 +150,127 @@ const handleUnknownSearch = async () => {
     if (v === null || v === undefined) return null;
     const s = String(v).trim();
     if (!s) return null;
-    const normalized = s.replace(/\s+/g, '').replace(',', '.');
+    const normalized = s.replace(/\s+/g, "").replace(",", ".");
     const n = Number(normalized);
     return Number.isFinite(n) ? n : null;
   };
 
   try {
-    const pids = trimmed.split(/[\s,;]+/).map((s) => s.trim().toUpperCase()).filter(Boolean);
+    const pids = trimmed
+      .split(/[\s,;]+/)
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+
     if (!pids.length) {
-      message.warning('Неверный формат ввода');
+      message.warning("Неверный формат ввода");
       return;
     }
 
+    const pid = pids[0];
     const data = (await SearchPids(pids)) as RawResponse & {
       job_id_itprice: string | null;
       job_id_ebay: string | null;
     };
 
-    const itpriceResult = data.job_id_itprice ? await waitForJobResult(data.job_id_itprice, 'itprice') : null;
-    const ebayResult = data.job_id_ebay ? await waitForJobResult(data.job_id_ebay, 'ebay') : null;
+    const itpriceJob =
+      data.job_id_itprice &&
+      (await waitForJobResult(data.job_id_itprice, "itprice"));
 
-    const pid = pids[0]; // мы ищем только один SKU
+    const ebayJob =
+      data.job_id_ebay &&
+      (await waitForJobResult(data.job_id_ebay, "ebay"));
 
-    const gpl = data.found_in_gpl?.[pid];
-    const it = data.found_in_itprice?.[pid];
-    const ebay = data.found_in_ebay?.[pid];
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const extractSku = (src: any): any => {
+      if (!src) return null;
 
-    // Определяем производителя
-    let vendor =
-      it?.vendor ||
-      gpl?.vendor ||
-      it?.manufacturer ||
-      gpl?.manufacturer ||
-      it?.brand ||
-      gpl?.brand ||
-      '';
+      
+      if (src[pid]) return src[pid];
 
-    if ((!vendor || vendor === '') && itpriceResult) {
-      const itData =
-        itpriceResult.found_in_itprice?.[pid] ||
-        (Array.isArray(itpriceResult)
-          ? itpriceResult.find((r) => String(r.sku).toUpperCase() === pid)
-          : null);
-      if (itData) vendor = itData.vendor || itData.brand || itData.manufacturer || vendor;
-    }
+      // Формат found_in_xxx
+      if (src.found_in_itprice?.[pid]) return src.found_in_itprice[pid];
+      if (src.found_in_ebay?.[pid]) return src.found_in_ebay[pid];
+      if (src.found_in_gpl?.[pid]) return src.found_in_gpl[pid];
 
-    // Извлекаем цены
-    let price_gpl =
-      toNumber(it?.price_usd ?? it?.price_gpl ?? gpl?.price_usd ?? gpl?.price_gpl) ?? null;
-    let ebay_price =
-      toNumber(ebay?.median_usd ?? ebay?.median ?? ebay?.price_gpl ?? ebay?.price_usd) ?? null;
+      // Если src — массив
+      if (Array.isArray(src))
+        return src.find((r) => String(r.sku).toUpperCase() === pid);
 
-    // Попытка добрать недостающие из job результатов
-    if ((price_gpl === null || price_gpl === 0) && itpriceResult) {
-      const itData =
-        itpriceResult.found_in_itprice?.[pid] ||
-        (Array.isArray(itpriceResult)
-          ? itpriceResult.find((r) => String(r.sku).toUpperCase() === pid)
-          : null);
-      if (itData) {
-        const jobPrice = toNumber(itData.price_usd ?? itData.price_gpl ?? itData.price);
-        if (jobPrice !== null) price_gpl = jobPrice;
-      }
-    }
-
-    if ((ebay_price === null || ebay_price === 0) && ebayResult) {
-      const ebayData =
-        ebayResult.found_in_ebay?.[pid] ||
-        (Array.isArray(ebayResult.result)
+      // Если src.result — массив
+      if (Array.isArray(src.result))
+        return src.result.find(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ? ebayResult.result.find((r: { sku: any }) => String(r.sku).toUpperCase() === pid)
-          : null) ||
-        (Array.isArray(ebayResult)
-          ? ebayResult.find((r) => String(r.sku).toUpperCase() === pid)
-          : null);
-
-      if (ebayData) {
-        const jobPrice = toNumber(
-          ebayData.median ?? ebayData.median_usd ?? ebayData.price_usd ?? ebayData.price_gpl
+          (r: any) => String(r.sku).toUpperCase() === pid
         );
-        if (jobPrice !== null) ebay_price = jobPrice;
-      }
-    }
 
-    // Если нашли хотя бы что-то — показать пользователю
+      // Если src.result — объект
+      if (src.result?.[pid]) return src.result[pid];
+
+      return null;
+    };
+
+    
+    const gpl = extractSku(data.found_in_gpl);
+    const it = extractSku(data.found_in_itprice);
+    const itJob = extractSku(itpriceJob);
+    const eb = extractSku(data.found_in_ebay);
+    const ebJob = extractSku(ebayJob);
+
+    
+    const vendor =
+      it?.vendor ||
+      it?.brand ||
+      gpl?.vendor ||
+      itJob?.vendor ||
+      itJob?.brand ||
+      eb?.brand ||
+      ebJob?.brand ||
+      "";
+
+    
+    const price_gpl =
+      toNumber(
+        it?.price_usd ??
+          it?.price_gpl ??
+          gpl?.price_usd ??
+          gpl?.price_gpl ??
+          itJob?.price_usd ??
+          itJob?.price_gpl
+      ) ?? null;
+
+    
+    const ebay_price =
+      toNumber(
+        eb?.median_usd ??
+          eb?.median ??
+          eb?.price_usd ??
+          eb?.price_gpl ??
+          ebJob?.median_usd ??
+          ebJob?.median ??
+          ebJob?.price_usd ??
+          ebJob?.price_gpl
+      ) ?? null;
+
+    
     if (vendor || price_gpl || ebay_price) {
-      setManualManufacturer(vendor || '');
-      setManualPrice(price_gpl ? String(price_gpl) : '');
-      setManualEbayPrice(ebay_price ? String(ebay_price) : '');
+      setManualManufacturer(vendor || "");
+      setManualPrice(price_gpl ? String(price_gpl) : "");
+      setManualEbayPrice(ebay_price ? String(ebay_price) : "");
       setIsProductMissing(true);
-      message.success('Данные найдены. Проверьте и при необходимости отредактируйте.');
+      message.success("Данные найдены. Проверьте и при необходимости отредактируйте.");
     } else {
       setIsProductMissing(true);
-      message.info('Данные не найдены. Введите вручную.');
+      message.info("Данные не найдены. Введите вручную.");
     }
   } catch (err) {
     console.error(err);
-    message.error('Ошибка поиска');
+    message.error("Ошибка поиска");
   } finally {
     setLoadingSearch(false);
   }
 };
+
 
 
 //Создание продукта
@@ -392,12 +411,8 @@ const handleSearch = async (value: string) => {
       const it = data.found_in_itprice?.[pid];
       const ebay = data.found_in_ebay?.[pid];
 
-      const hasIt = !!(it && it !== "no data" && (it.price_gpl || it.price_usd));
-      const hasEbay = !!(
-      ebay &&
-      ebay !== "no data" &&
-      (ebay.median || ebay.median_usd || ebay.adjusted_price_usd)
-    );
+      const hasIt = it && it !== 'no data';
+      const hasEbay = ebay && ebay !== 'no data';
 
       const product: Product = {
         key: pid,
@@ -416,7 +431,7 @@ const handleSearch = async (value: string) => {
         job_id_ebay: data.job_id_ebay,
       };
 
-     
+      
       if (!hasEbay && data.job_id_ebay) {
         try {
           const ebayResult = await waitForJobResult(data.job_id_ebay, 'ebay');
@@ -429,7 +444,6 @@ const handleSearch = async (value: string) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (Array.isArray(ebayResult) ? ebayResult.find((r: any) => String(r.sku).toUpperCase() === pid) : null) ||
               ebayResult;
-              
 
             if (maybeEbayEntry) {
               // median, median_usd, adjusted_price_usd, price_gpl и т.д.
@@ -450,7 +464,6 @@ const handleSearch = async (value: string) => {
             }
           }
         } catch (err) {
-          console.log("EBAY CATCH TRIGGERED!");
           console.error(`Job ebay для ${pid} не удался:`, err);
         }
       }
@@ -511,6 +524,7 @@ const handleSearch = async (value: string) => {
     setLoadingSearch(false);
   }
 };
+
 
 
 

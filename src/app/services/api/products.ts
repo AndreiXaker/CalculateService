@@ -141,7 +141,7 @@ export const waitForJobResult = async (
   jobId: string,
   type: 'ebay' | 'itprice',
   maxAttempts = 20,
-  interval = 2500
+  interval = 1000
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
   let attempt = 0;

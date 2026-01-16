@@ -7,7 +7,7 @@ COPY CalculateService/ ./
 RUN npm run build
 
 # Stage 2: runtime
-FROM node:18 AS runner
+FROM node:20 AS runner
 WORKDIR /app
 COPY --from=builder /app ./
 EXPOSE 3000
